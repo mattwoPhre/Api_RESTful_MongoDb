@@ -45,7 +45,6 @@ namespace Console_API_MVC.Controller
         {
                 Contact contact = _contacts.UpdateContact(id, value);
                 return Request.CreateResponse(HttpStatusCode.Created, contact);
-              
         }
 
         public void Delete(int id)

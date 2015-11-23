@@ -43,6 +43,7 @@ namespace Console_API_MVC.Repository
         }
 
         public Contact GetContact(int id)
+
         {
             IMongoQuery query = Query.EQ("ContactID", id);
             return _contacts.Find(query).FirstOrDefault();

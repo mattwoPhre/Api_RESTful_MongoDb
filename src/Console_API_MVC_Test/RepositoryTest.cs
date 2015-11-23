@@ -1,9 +1,11 @@
 ﻿using System;
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
+using System.Transactions;
 using Console_API_MVC.Controller;
 using Console_API_MVC.Model;
 using Console_API_MVC.Repository;
@@ -16,17 +18,26 @@ namespace Console_API_MVC_Test
 {
     public class RepositoryTest
     {
-        private ContactRepository _repo;
+        public ContactRepository _repo;
         public Contact _contact1;
-        public string FirstName ;
+        public string FirstName;
         public Contact _contact2;
         public IEnumerable<Contact> _listaCont;
+        public MongoCollection<Contact> _contacts;
+        MongoClient _client;
+        MongoServer _server;
+        MongoDatabase _database;
 
         [SetUp]
         public void SetUp()
         {
-           _repo = new ContactRepository();
-           
+            string connection = "mongodb://localhost:27017";
+            _repo = new ContactRepository();
+            _client = new MongoClient(connection);
+            _server = _client.GetServer();
+            _database = _server.GetDatabase("Prova_Api", WriteConcern.Unacknowledged);
+            _contacts = _database.GetCollection<Contact>("ContactTest");
+
         }
 
         [Test]
@@ -51,7 +62,7 @@ namespace Console_API_MVC_Test
         [Test]
         public void Post_ShouldAddContact()
         {
-            var tutti =  _repo.GetAllContacts().Count();
+            var tutti = _repo.GetAllContacts().Count();
             var contact = new Contact
             {
                 Id = ObjectId.GenerateNewId(),
@@ -83,30 +94,43 @@ namespace Console_API_MVC_Test
             var tuttiDopoRemove = _repo.GetAllContacts().Count();
 
             Assert.AreEqual(true, tuttiDopoRemove == quanti);
-            
+
         }
 
-        //[Test]
-        //public void Update_ShouldEditContact()
-        //{
-        //    int id = 1;
-        //    string nome = "Johnny";
+        [Test]
+        public void Update_ShouldEditContact()
+        {
+            int id = 2;
+            string nome = "Johnny";
+            string data_modificata = "Today";
+            var contact = _repo.GetContact(id);
+            IMongoQuery query = Query.EQ("ContactID", id);
 
-        //    var contact = _repo.GetAllContacts().Where(x => x.ContactID==id);
-        //    ;
-        //    IMongoUpdate update = Update
-        //        .Set("ContactID", id)
-        //        .Set("FirstName", nome);
-            
-        //    //IMongoUpdate update = Update
-        //    //    .Set("ContactID", contact.ContactID)
-        //    //    .Set("FirstName", nome)
-        //    //    .Set("LastName", contact.LastName);
 
-        //    _repo.UpdateContact(id, contact);
-        //    Assert.AreEqual(true, contact. == nome);
-        //}
-        
+            using (TransactionScope ts = new TransactionScope())
+            {
+                IMongoUpdate update = Update
+                    .Set("ContactID", id)
+                    .Set("FirstName", nome)
+                    .Set("LastName", contact.LastName)
+                    .Set("LastModified", data_modificata);
+
+                Contact daModificare = new Contact
+                {
+                    ContactID = contact.ContactID,
+                    FirstName = nome,
+                    LastName = contact.LastName,
+                    LastModified = data_modificata
+                };
+                _contacts.Update(query, update);
+                _repo.UpdateContact(id, daModificare);
+
+                Assert.AreEqual(true, daModificare.FirstName == nome);
+                scope.Dispose();
+
+            }
+        }
+
 
     }
 }
